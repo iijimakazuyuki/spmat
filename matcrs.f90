@@ -1,4 +1,4 @@
-module mat_mod
+module matcrs_mod
 	implicit none
 	type matcrs
 		double precision, pointer :: e(:)
