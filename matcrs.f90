@@ -94,4 +94,8 @@ contains
 		read *, mat%e, mat%idx, mat%col
 	end function
 	
+	subroutine init_matcrs(mat)
+		type(matcrs), intent(in) :: mat
+		allocate(mat%e(mat%m), mat%idx(0:mat%n), mat%col(mat%m))
+	end subroutine
 end module
