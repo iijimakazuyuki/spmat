@@ -90,12 +90,12 @@ contains
 	function read_matcrs_array() result(mat)
 		type(matcrs) :: mat
 		read *, mat%n, mat%m
-		allocate(mat%e(mat%m), mat%idx(0:mat%n), mat%col(mat%m))
+		call init_matcrs(mat)
 		read *, mat%e, mat%idx, mat%col
 	end function
 	
 	subroutine init_matcrs(mat)
-		type(matcrs), intent(in) :: mat
+		type(matcrs), intent(inout) :: mat
 		allocate(mat%e(mat%m), mat%idx(0:mat%n), mat%col(mat%m))
 	end subroutine
 end module
