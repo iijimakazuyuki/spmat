@@ -22,11 +22,15 @@ module matcrs_mod
 		module procedure crs2dense
 	end interface
 	
+	interface indexof
+		module procedure indexof_b, indexof_i
+	end interface
+	
 	private
 	public matcrs, matcrs_part
 	public spmatvec, crs2dense, read_matcrs_array, init_matcrs, part_matcrs
 	public print_matdense, print_matcrs, print_matcrs_array, print_matcrs_2d, print_matcrs_part_array
-	public write_matcrs_part_array, read_file_matcrs_part_array
+	public write_matcrs_part_array, read_file_matcrs_part_array, order_matcrs
 contains
 	!疎行列ベクトル積
 	function spmatvec(mat,vec) result(sp)
@@ -199,6 +203,31 @@ contains
 		write(n,*) mat%map
 	end subroutine
 	
+	function order_matcrs(mat, order) result(omat)
+		type(matcrs) :: omat
+		type(matcrs), intent(in) :: mat
+		integer, intent(in) :: order(mat%n)
+		integer :: i, j, osi, oei, si, ei, inv(mat%n)
+		
+		do i=1, mat%n
+			inv(i) = indexof(order, i)
+		end do
+		omat%n = mat%n
+		omat%m = mat%m
+		call init_matcrs(omat)
+		do i=1, mat%n
+			si = mat%idx(order(i)-1) + 1
+			ei = mat%idx(order(i))
+			osi = omat%idx(i-1) + 1
+			omat%idx(i) = ei - si + osi
+			oei = omat%idx(i)
+			omat%e(osi:oei) = mat%e(si:ei)
+			do j=osi, oei
+				omat%col(j) = inv(mat%col(si+j-osi))
+			end do
+		end do
+	end function
+	
 	logical function has(a, x)
 		integer, intent(in) :: a(:), x
 		integer :: i
@@ -211,16 +240,28 @@ contains
 		end do
 	end function
 	
-	integer function indexof(a, x)
+	integer function indexof_b(a, x) result(idx)
 		logical, intent(in) :: a(:), x
 		integer :: i
-		indexof = -1
+		idx = -1
 		do i=1, size(a)
 			if(a(i) .eqv. x) then
-				indexof = i
+				idx = i
 				exit
 			end if
 		end do
 	end function
-	
+
+	integer function indexof_i(a, x) result(idx)
+		integer, intent(in) :: a(:), x
+		integer :: i
+		idx = -1
+		do i=1, size(a)
+			if(a(i) == x) then
+				idx = i
+				exit
+			end if
+		end do
+	end function
 end module
+
