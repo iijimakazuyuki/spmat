@@ -1,9 +1,9 @@
 module matcrs_mod
 	implicit none
 	type matcrs
-		double precision, pointer :: e(:)
+		double precision, allocatable :: e(:)
 		integer :: n, m
-		integer, pointer :: idx(:), col(:)
+		integer, allocatable :: idx(:), col(:)
 	end type
 	
 	!疎行列ベクトル積
@@ -87,26 +87,11 @@ contains
 	end subroutine
 	
 	!CRS形式の疎行列を読み込む (original format)
-	function read_matcrs_array(e, idx, col) result(mat)
+	function read_matcrs_array() result(mat)
 		type(matcrs) :: mat
-		double precision, target, allocatable, intent(inout) :: e(:)
-		integer, target, allocatable, intent(inout) :: idx(:), col(:)
 		read *, mat%n, mat%m
-		call init_matcrs(mat, e, idx, col)
-		read *, e, idx, col
+		allocate(mat%e(mat%m), mat%idx(0:mat%n), mat%col(mat%m))
+		read *, mat%e, mat%idx, mat%col
 	end function
-	
-	subroutine init_matcrs(mat, e, idx, col)
-		type(matcrs) :: mat
-		double precision, target, allocatable, intent(inout) :: e(:)
-		integer, target, allocatable, intent(inout) :: idx(:), col(:)
-		allocate(e(mat%m), idx(0:mat%n), col(mat%m))
-		e = 0
-		idx = 0
-		col = 0
-		mat%e => e
-		mat%idx => idx
-		mat%col => col
-	end subroutine
 	
 end module
