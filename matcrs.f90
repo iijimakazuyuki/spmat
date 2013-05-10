@@ -26,7 +26,7 @@ module matcrs_mod
 	public matcrs, matcrs_part
 	public spmatvec, crs2dense, read_matcrs_array, init_matcrs, part_matcrs
 	public print_matdense, print_matcrs, print_matcrs_array, print_matcrs_2d, print_matcrs_part_array
-	public write_matcrs_part_array
+	public write_matcrs_part_array, read_file_matcrs_part_array
 contains
 	!疎行列ベクトル積
 	function spmatvec(mat,vec) result(sp)
@@ -104,6 +104,15 @@ contains
 		read *, mat%n, mat%m
 		call init_matcrs(mat)
 		read *, mat%e, mat%idx, mat%col
+	end function
+	
+	function read_file_matcrs_part_array(n) result(mat)
+		type(matcrs_part) :: mat
+		integer, intent(in) :: n
+		read(n,*) mat%mat%n, mat%mat%m
+		call init_matcrs(mat%mat)
+		read(n,*) mat%mat%e, mat%mat%idx, mat%mat%col
+		read(n,*) mat%inn, mat%neib, mat%map
 	end function
 	
 	subroutine init_matcrs(mat)
