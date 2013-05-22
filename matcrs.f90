@@ -1,14 +1,17 @@
 module matcrs_mod
 	implicit none
+	
+	!CRS
 	type matcrs
 		double precision, allocatable :: e(:)
-		integer :: n, m
-		integer, allocatable :: idx(:), col(:)
+		integer :: n, m, k
+		integer, allocatable :: row(:), col(:)
 	end type
 	
+	!
 	type matcrs_part
 		type(matcrs) :: mat
-		integer :: inn, neib
+		integer :: inn, ext
 		integer, allocatable :: map(:)
 	end type
 	
@@ -27,7 +30,7 @@ module matcrs_mod
 	end interface
 	
 	private
-	public matcrs, matcrs_part
+	public matcrs, matcrs_part, operator(*), assignment(=)
 	public spmatvec, crs2dense, read_matcrs_array, init_matcrs, part_matcrs
 	public print_matdense, print_matcrs, print_matcrs_array, print_matcrs_2d, print_matcrs_part_array
 	public write_matcrs_part_array, read_file_matcrs_part_array, order_matcrs
@@ -42,7 +45,7 @@ contains
 		sp = 0
 		!$omp do private(j)
 		do i=1, mat%n
-			do j=mat%idx(i-1)+1, mat%idx(i)
+			do j=mat%row(i-1)+1, mat%row(i)
 				sp(i) = sp(i) + mat%e(j)*vec(mat%col(j))
 			end do
 		end do
@@ -54,10 +57,10 @@ contains
 		double precision, allocatable, intent(out) :: dense(:,:)
 		type(matcrs), intent(in) :: crs
 		integer :: i, j
-		allocate(dense(crs%n,maxval(crs%col)))
+		allocate(dense(crs%n,crs%m))
 		dense = 0
 		do i=1, crs%n
-			do j=crs%idx(i-1)+1, crs%idx(i)
+			do j=crs%row(i-1)+1, crs%row(i)
 				dense(i,crs%col(j)) = crs%e(j)
 			end do
 		end do
@@ -76,9 +79,9 @@ contains
 	subroutine print_matcrs(mat)
 		type(matcrs), intent(in) :: mat
 		integer :: i, j
-		print *, mat%n, maxval(mat%col), mat%m
+		print *, mat%n, mat%m, mat%k
 		do i=1, mat%n
-			do j=mat%idx(i-1)+1, mat%idx(i)
+			do j=mat%row(i-1)+1, mat%row(i)
 				print *, i, mat%col(j), mat%e(j)
 			end do
 		end do
@@ -88,9 +91,9 @@ contains
 	subroutine print_matcrs_array(mat)
 		type(matcrs), intent(in) :: mat
 		integer :: i, j
-		print *, mat%n, mat%m
+		print *, mat%n, mat%m, mat%k
 		print *, mat%e
-		print *, mat%idx
+		print *, mat%row
 		print *, mat%col
 	end subroutine
 	
@@ -105,24 +108,26 @@ contains
 	!CRSå`éÆÇÃëaçsóÒÇì«Ç›çûÇﬁ (original format)
 	function read_matcrs_array() result(mat)
 		type(matcrs) :: mat
-		read *, mat%n, mat%m
+		read *, mat%n, mat%m, mat%k
 		call init_matcrs(mat)
-		read *, mat%e, mat%idx, mat%col
+		read *, mat%e, mat%row, mat%col
 	end function
 	
 	function read_file_matcrs_part_array(n) result(mat)
 		type(matcrs_part) :: mat
 		integer, intent(in) :: n
-		read(n,*) mat%mat%n, mat%mat%m
+		read(n,*) mat%mat%n, mat%mat%m, mat%mat%k
 		call init_matcrs(mat%mat)
-		read(n,*) mat%mat%e, mat%mat%idx, mat%mat%col
-		read(n,*) mat%inn, mat%neib, mat%map
+		read(n,*) mat%mat%e, mat%mat%row, mat%mat%col
+		read(n,*) mat%inn, mat%ext
+		allocate(mat%map(mat%inn + mat%ext))
+		read(n,*) mat%map
 	end function
 	
 	subroutine init_matcrs(mat)
 		type(matcrs), intent(inout) :: mat
-		allocate(mat%e(mat%m), mat%idx(0:mat%n), mat%col(mat%m))
-		mat%idx(0) = 0
+		allocate(mat%e(mat%k), mat%row(0:mat%n), mat%col(mat%k))
+		mat%row(0) = 0
 	end subroutine
 	
 	!CRSå`éÆÇÃëaçsóÒÇï™äÑ
@@ -135,22 +140,23 @@ contains
 		logical :: interior(mat%n), exterior(mat%n)
 		
 		smat%mat%n = npp
-		smat%mat%m = 0
+		smat%mat%k = 0
 		do i=1, npp
-			smat%mat%m = smat%mat%m + mat%idx(part(i)) - mat%idx(part(i)-1)
+			smat%mat%k = smat%mat%k + mat%row(part(i)) - mat%row(part(i)-1)
 		end do
 		call init_matcrs(smat%mat)
 		
 		do i=1, smat%mat%n
-			smat%mat%idx(i) = mat%idx(part(i)) - mat%idx(part(i)-1) + smat%mat%idx(i-1)
-			smat%mat%e(smat%mat%idx(i-1)+1:smat%mat%idx(i)) = mat%e(mat%idx(part(i)-1)+1:mat%idx(part(i)))
-			smat%mat%col(smat%mat%idx(i-1)+1:smat%mat%idx(i)) = mat%col(mat%idx(part(i)-1)+1:mat%idx(part(i)))
+			smat%mat%row(i) = mat%row(part(i)) - mat%row(part(i)-1) + smat%mat%row(i-1)
+			smat%mat%e(smat%mat%row(i-1)+1:smat%mat%row(i)) = mat%e(mat%row(part(i)-1)+1:mat%row(part(i)))
+			smat%mat%col(smat%mat%row(i-1)+1:smat%mat%row(i)) = mat%col(mat%row(part(i)-1)+1:mat%row(part(i)))
 		end do
+		smat%mat%m = maxval(smat%mat%col)
 		
 		interior = .false.
 		exterior = .false.
 		do i=1, smat%mat%n
-			do j=smat%mat%idx(i-1)+1, smat%mat%idx(i)
+			do j=smat%mat%row(i-1)+1, smat%mat%row(i)
 				if(has(part, smat%mat%col(j))) then
 					interior(smat%mat%col(j)) = .true.
 				else
@@ -160,8 +166,8 @@ contains
 		end do
 		
 		smat%inn = count(interior)
-		smat%neib = count(exterior)
-		allocate(smat%map(smat%inn + smat%neib))
+		smat%ext = count(exterior)
+		allocate(smat%map(smat%inn + smat%ext))
 		
 		inv = 0
 		do i=1, smat%inn
@@ -171,14 +177,14 @@ contains
 			interior(j) = .false.
 		end do
 		
-		do i=1, smat%neib
+		do i=1, smat%ext
 			j = indexof(exterior, .true.)
 			smat%map(i+smat%inn) = j
 			inv(j) = i+smat%inn
 			exterior(j) = .false.
 		end do
 		
-		do i=1, smat%mat%m
+		do i=1, smat%mat%k
 			smat%mat%col(i) = inv(smat%mat%col(i))
 		end do
 		
@@ -188,18 +194,18 @@ contains
 	subroutine print_matcrs_part_array(mat)
 		type(matcrs_part) :: mat
 		call print_matcrs_array(mat%mat)
-		print *, mat%inn, mat%neib
+		print *, mat%inn, mat%ext
 		print *, mat%map
 	end subroutine
 	
 	subroutine write_matcrs_part_array(n, mat)
 		integer :: n
 		type(matcrs_part) :: mat
-		write(n,*) mat%mat%n, mat%mat%m
+		write(n,*) mat%mat%n, mat%mat%m, mat%mat%k
 		write(n,*) mat%mat%e
-		write(n,*) mat%mat%idx
+		write(n,*) mat%mat%row
 		write(n,*) mat%mat%col
-		write(n,*) mat%inn, mat%neib
+		write(n,*) mat%inn, mat%ext
 		write(n,*) mat%map
 	end subroutine
 	
@@ -214,13 +220,14 @@ contains
 		end do
 		omat%n = mat%n
 		omat%m = mat%m
+		omat%k = mat%k
 		call init_matcrs(omat)
 		do i=1, mat%n
-			si = mat%idx(order(i)-1) + 1
-			ei = mat%idx(order(i))
-			osi = omat%idx(i-1) + 1
-			omat%idx(i) = ei - si + osi
-			oei = omat%idx(i)
+			si = mat%row(order(i)-1) + 1
+			ei = mat%row(order(i))
+			osi = omat%row(i-1) + 1
+			omat%row(i) = ei - si + osi
+			oei = omat%row(i)
 			omat%e(osi:oei) = mat%e(si:ei)
 			do j=osi, oei
 				omat%col(j) = inv(mat%col(si+j-osi))
