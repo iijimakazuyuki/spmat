@@ -129,10 +129,10 @@ contains
 	end subroutine
 	
 	!CRS形式の疎行列を分割
-	function part_matcrs(mat, part) result(smat)
+	function part_matcrs(mat, part_col, part_row) result(smat)
 		type(matcrs_part) :: smat
 		type(matcrs), intent(in) :: mat
-		integer, intent(in) :: part(:)
+		integer, intent(in) :: part_col(:), part_row(:)
 		
 		integer :: i, j, inv(mat%n)
 		type(bitset) :: interior, exterior
@@ -140,22 +140,22 @@ contains
 		!初期化
 		interior = new_bitset(mat%n)
 		exterior = new_bitset(mat%n)
-		smat%mat%n = size(part)
+		smat%mat%n = size(part_row)
 		smat%mat%k = 0
 		do i=1, smat%mat%n
-			smat%mat%k = smat%mat%k + mat%row(part(i)) - mat%row(part(i)-1)
+			smat%mat%k = smat%mat%k + mat%row(part_row(i)) - mat%row(part_row(i)-1)
 		end do
 		call init_matcrs(smat%mat)
 		
 		do i=1, smat%mat%n
-			smat%mat%row(i) = mat%row(part(i)) - mat%row(part(i)-1) + smat%mat%row(i-1)
-			smat%mat%e(smat%mat%row(i-1)+1:smat%mat%row(i)) = mat%e(mat%row(part(i)-1)+1:mat%row(part(i)))
-			smat%mat%col(smat%mat%row(i-1)+1:smat%mat%row(i)) = mat%col(mat%row(part(i)-1)+1:mat%row(part(i)))
+			smat%mat%row(i) = mat%row(part_row(i)) - mat%row(part_row(i)-1) + smat%mat%row(i-1)
+			smat%mat%e(smat%mat%row(i-1)+1:smat%mat%row(i)) = mat%e(mat%row(part_row(i)-1)+1:mat%row(part_row(i)))
+			smat%mat%col(smat%mat%row(i-1)+1:smat%mat%row(i)) = mat%col(mat%row(part_row(i)-1)+1:mat%row(part_row(i)))
 		end do
 		
 		do i=1, smat%mat%n
 			do j=smat%mat%row(i-1)+1, smat%mat%row(i)
-				if(has(part, smat%mat%col(j))) then
+				if(has(part_col, smat%mat%col(j))) then
 					call set_bitset(interior,smat%mat%col(j))
 				else
 					call set_bitset(exterior,smat%mat%col(j))
