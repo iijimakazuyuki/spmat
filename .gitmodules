@@ -1,0 +1,3 @@
+[submodule "utilfort"]
+	path = utilfort
+	url = git://github.com/iijimakazuyuki/utilfort

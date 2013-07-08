@@ -1,4 +1,6 @@
 module matcrs_mod
+	use bitset_mod
+	use array
 	implicit none
 	
 	!CRS
@@ -15,18 +17,14 @@ module matcrs_mod
 		integer, allocatable :: map(:)
 	end type
 	
-	!‘as—ñƒxƒNƒgƒ‹Ï
+	!ç–è¡Œåˆ—ãƒ™ã‚¯ãƒˆãƒ«ç©
 	interface operator(*)
 		module procedure spmatvec
 	end interface
 	
-	!CRSŒ`®‚©‚ç–§s—ñ‚É•ÏŠ·
+	!CRSå½¢å¼ã‹ã‚‰å¯†è¡Œåˆ—ã«å¤‰æ›
 	interface assignment(=)
 		module procedure crs2dense
-	end interface
-	
-	interface indexof
-		module procedure indexof_b, indexof_i
 	end interface
 	
 	private
@@ -35,7 +33,7 @@ module matcrs_mod
 	public print_matdense, print_matcrs, print_matcrs_array, print_matcrs_2d, print_matcrs_part_array
 	public write_matcrs_part_array, read_file_matcrs_part_array, order_matcrs
 contains
-	!‘as—ñƒxƒNƒgƒ‹Ï
+	!ç–è¡Œåˆ—ãƒ™ã‚¯ãƒˆãƒ«ç©
 	function spmatvec(mat,vec) result(sp)
 		double precision, allocatable :: sp(:)
 		type(matcrs), intent(in) :: mat
@@ -52,7 +50,7 @@ contains
 		!$omp end do
 	end function
 	
-	!CRSŒ`®‚©‚ç–§s—ñ‚É•ÏŠ·
+	!CRSå½¢å¼ã‹ã‚‰å¯†è¡Œåˆ—ã«å¤‰æ›
 	subroutine crs2dense(dense,crs)
 		double precision, allocatable, intent(out) :: dense(:,:)
 		type(matcrs), intent(in) :: crs
@@ -66,7 +64,7 @@ contains
 		end do
 	end subroutine
 	
-	!–§s—ñ‚ğo—Í
+	!å¯†è¡Œåˆ—ã‚’å‡ºåŠ›
 	subroutine print_matdense(mat)
 		double precision, intent(in) :: mat(:,:)
 		integer :: i
@@ -75,7 +73,7 @@ contains
 		end do
 	end subroutine
 	
-	!CRSŒ`®‚Ì‘as—ñ‚ğo—Í (Matrix Market coordinate format)
+	!CRSå½¢å¼ã®ç–è¡Œåˆ—ã‚’å‡ºåŠ› (Matrix Market coordinate format)
 	subroutine print_matcrs(mat)
 		type(matcrs), intent(in) :: mat
 		integer :: i, j
@@ -87,7 +85,7 @@ contains
 		end do
 	end subroutine
 	
-	!CRSŒ`®‚Ì‘as—ñ‚ğo—Í (original format)
+	!CRSå½¢å¼ã®ç–è¡Œåˆ—ã‚’å‡ºåŠ› (original format)
 	subroutine print_matcrs_array(mat)
 		type(matcrs), intent(in) :: mat
 		integer :: i, j
@@ -97,7 +95,7 @@ contains
 		print *, mat%col
 	end subroutine
 	
-	!CRSŒ`®‚Ì‘as—ñ‚ğ–§s—ñŒ`®‚Åo—Í
+	!CRSå½¢å¼ã®ç–è¡Œåˆ—ã‚’å¯†è¡Œåˆ—å½¢å¼ã§å‡ºåŠ›
 	subroutine print_matcrs_2d(mat)
 		type(matcrs), intent(in) :: mat
 		double precision, allocatable :: dense(:,:)
@@ -105,7 +103,7 @@ contains
 		call print_matdense(dense)
 	end subroutine
 	
-	!CRSŒ`®‚Ì‘as—ñ‚ğ“Ç‚İ‚Ş (original format)
+	!CRSå½¢å¼ã®ç–è¡Œåˆ—ã‚’èª­ã¿è¾¼ã‚€ (original format)
 	function read_matcrs_array() result(mat)
 		type(matcrs) :: mat
 		read *, mat%n, mat%m, mat%k
@@ -130,18 +128,21 @@ contains
 		mat%row(0) = 0
 	end subroutine
 	
-	!CRSŒ`®‚Ì‘as—ñ‚ğ•ªŠ„
-	function part_matcrs(mat, part, npp) result(smat)
+	!CRSå½¢å¼ã®ç–è¡Œåˆ—ã‚’åˆ†å‰²
+	function part_matcrs(mat, part) result(smat)
 		type(matcrs_part) :: smat
 		type(matcrs), intent(in) :: mat
-		integer, intent(in) :: part(npp), npp
+		integer, intent(in) :: part(:)
 		
 		integer :: i, j, inv(mat%n)
-		logical :: interior(mat%n), exterior(mat%n)
+		type(bitset) :: interior, exterior
 		
-		smat%mat%n = npp
+		!åˆæœŸåŒ–
+		interior = new_bitset(mat%n)
+		exterior = new_bitset(mat%n)
+		smat%mat%n = size(part)
 		smat%mat%k = 0
-		do i=1, npp
+		do i=1, smat%mat%n
 			smat%mat%k = smat%mat%k + mat%row(part(i)) - mat%row(part(i)-1)
 		end do
 		call init_matcrs(smat%mat)
@@ -151,46 +152,44 @@ contains
 			smat%mat%e(smat%mat%row(i-1)+1:smat%mat%row(i)) = mat%e(mat%row(part(i)-1)+1:mat%row(part(i)))
 			smat%mat%col(smat%mat%row(i-1)+1:smat%mat%row(i)) = mat%col(mat%row(part(i)-1)+1:mat%row(part(i)))
 		end do
-		smat%mat%m = maxval(smat%mat%col)
 		
-		interior = .false.
-		exterior = .false.
 		do i=1, smat%mat%n
 			do j=smat%mat%row(i-1)+1, smat%mat%row(i)
 				if(has(part, smat%mat%col(j))) then
-					interior(smat%mat%col(j)) = .true.
+					call set_bitset(interior,smat%mat%col(j))
 				else
-					exterior(smat%mat%col(j)) = .true.
+					call set_bitset(exterior,smat%mat%col(j))
 				end if
 			end do
 		end do
 		
-		smat%inn = count(interior)
-		smat%ext = count(exterior)
+		smat%inn = count_bitset(interior)
+		smat%ext = count_bitset(exterior)
 		allocate(smat%map(smat%inn + smat%ext))
 		
+		!interior, ..., exterior ã¨ãªã‚‹ã‚ˆã†ã«åˆ—ã‚’ä¸¦ã³æ›¿ãˆ
 		inv = 0
+		j = 0
 		do i=1, smat%inn
-			j = indexof(interior, .true.)
+			j = next_bitset(interior, j)
 			smat%map(i) = j
 			inv(j) = i
-			interior(j) = .false.
 		end do
 		
+		j = 0
 		do i=1, smat%ext
-			j = indexof(exterior, .true.)
+			j = next_bitset(exterior, j)
 			smat%map(i+smat%inn) = j
 			inv(j) = i+smat%inn
-			exterior(j) = .false.
 		end do
 		
 		do i=1, smat%mat%k
 			smat%mat%col(i) = inv(smat%mat%col(i))
 		end do
+		smat%mat%m = maxval(smat%mat%col)
 		
 	end function
 	
-	!
 	subroutine print_matcrs_part_array(mat)
 		type(matcrs_part) :: mat
 		call print_matcrs_array(mat%mat)
@@ -232,42 +231,6 @@ contains
 			do j=osi, oei
 				omat%col(j) = inv(mat%col(si+j-osi))
 			end do
-		end do
-	end function
-	
-	logical function has(a, x)
-		integer, intent(in) :: a(:), x
-		integer :: i
-		has = .false.
-		do i=1, size(a)
-			if(a(i) == x) then
-				has = .true.
-				exit
-			end if
-		end do
-	end function
-	
-	integer function indexof_b(a, x) result(idx)
-		logical, intent(in) :: a(:), x
-		integer :: i
-		idx = -1
-		do i=1, size(a)
-			if(a(i) .eqv. x) then
-				idx = i
-				exit
-			end if
-		end do
-	end function
-
-	integer function indexof_i(a, x) result(idx)
-		integer, intent(in) :: a(:), x
-		integer :: i
-		idx = -1
-		do i=1, size(a)
-			if(a(i) == x) then
-				idx = i
-				exit
-			end if
 		end do
 	end function
 end module
