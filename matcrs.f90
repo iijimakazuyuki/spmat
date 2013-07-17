@@ -152,7 +152,7 @@ contains
 		
 		do i=1, smat%n
 			do j=smat%row(i-1)+1, smat%row(i)
-				smat%col(j) = indexof(part_col,smat%col(j))
+				smat%col(j) = part_col(smat%col(j))
 			end do
 		end do
 		
