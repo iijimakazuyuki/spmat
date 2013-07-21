@@ -88,11 +88,19 @@ contains
 	!CRS形式の疎行列を出力 (original format)
 	subroutine print_matcrs_array(mat)
 		type(matcrs), intent(in) :: mat
-		integer :: i, j
 		print *, mat%n, mat%m, mat%k
 		print *, mat%e
 		print *, mat%row
 		print *, mat%col
+	end subroutine
+	
+	subroutine write_matcrs_array(n,mat)
+		type(matcrs), intent(in) :: mat
+		integer, intent(in) :: n
+		write(n,*) mat%n, mat%m, mat%k
+		write(n,*) mat%e
+		write(n,*) mat%row
+		write(n,*) mat%col
 	end subroutine
 	
 	!CRS形式の疎行列を密行列形式で出力
