@@ -31,7 +31,7 @@ module matcrs_mod
 	public matcrs, matcrs_part, operator(*), assignment(=)
 	public spmatvec, crs2dense, read_matcrs_array, init_matcrs, part_matcrs
 	public print_matdense, print_matcrs, print_matcrs_array, print_matcrs_2d, print_matcrs_part_array
-	public write_matcrs_part_array, read_file_matcrs_part_array, order_matcrs
+	public write_matcrs_array, write_matcrs_part_array, read_file_matcrs_part_array, order_matcrs
 contains
 	!疎行列ベクトル積
 	function spmatvec(mat,vec) result(sp)
