@@ -1,5 +1,4 @@
 module matcrs_mod
-	use bitset_mod
 	use array
 	implicit none
 	
