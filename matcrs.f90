@@ -31,7 +31,10 @@ module matcrs_mod
 	public spmatvec, crs2dense, read_matcrs_array, init_matcrs, part_matcrs
 	public print_matdense, print_matcrs, print_matcrs_array, print_matcrs_2d, print_matcrs_part_array
 	public write_matcrs_array, write_matcrs_part_array
-	public read_file_matcrs_array, read_file_matcrs_part_array, order_matcrs
+	public write_unformatted_matcrs_array, write_unformatted_matcrs_part_array
+	public read_file_matcrs_array, read_file_matcrs_part_array
+	public read_unformatted_matcrs_array, read_unformatted_matcrs_part_array
+	public order_matcrs
 contains
 	!疎行列ベクトル積
 	function spmatvec(mat,vec) result(sp)
@@ -103,6 +106,13 @@ contains
 		write(n,*) mat%col
 	end subroutine
 	
+	subroutine write_unformatted_matcrs_array(n,mat)
+		type(matcrs), intent(in) :: mat
+		integer, intent(in) :: n
+		write(n) mat%n, mat%m, mat%k
+		write(n) mat%e, mat%row, mat%col
+	end subroutine
+	
 	!CRS形式の疎行列を密行列形式で出力
 	subroutine print_matcrs_2d(mat)
 		type(matcrs), intent(in) :: mat
@@ -127,6 +137,14 @@ contains
 		read(n,*) mat%e, mat%row, mat%col
 	end function
 	
+	function read_unformatted_matcrs_array(n) result(mat)
+		type(matcrs) :: mat
+		integer, intent(in) :: n
+		read(n) mat%n, mat%m, mat%k
+		call init_matcrs(mat)
+		read(n) mat%e, mat%row, mat%col
+	end function
+	
 	function read_file_matcrs_part_array(n) result(mat)
 		type(matcrs_part) :: mat
 		integer, intent(in) :: n
@@ -136,6 +154,17 @@ contains
 		read(n,*) mat%inn, mat%ext
 		allocate(mat%map(mat%inn + mat%ext))
 		read(n,*) mat%map
+	end function
+	
+	function read_unformatted_matcrs_part_array(n) result(mat)
+		type(matcrs_part) :: mat
+		integer, intent(in) :: n
+		read(n) mat%mat%n, mat%mat%m, mat%mat%k
+		call init_matcrs(mat%mat)
+		read(n) mat%mat%e, mat%mat%row, mat%mat%col
+		read(n) mat%inn, mat%ext
+		allocate(mat%map(mat%inn + mat%ext))
+		read(n) mat%map
 	end function
 	
 	subroutine init_matcrs(mat)
@@ -192,6 +221,17 @@ contains
 		write(n,*) mat%mat%col
 		write(n,*) mat%inn, mat%ext
 		write(n,*) mat%map
+	end subroutine
+	
+	subroutine write_unformatted_matcrs_part_array(n, mat)
+		integer :: n
+		type(matcrs_part) :: mat
+		write(n) mat%mat%n, mat%mat%m, mat%mat%k
+		write(n) mat%mat%e
+		write(n) mat%mat%row
+		write(n) mat%mat%col
+		write(n) mat%inn, mat%ext
+		write(n) mat%map
 	end subroutine
 	
 	function order_matcrs(mat, order) result(omat)
